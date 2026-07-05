@@ -11,6 +11,11 @@ function classify(status, reason) {
   const text = String(reason || '').toLowerCase();
   if (status === 'OK') return 'ok';
   if (status === 'TIMEOUT') return 'timeout';
+  const bundleFailed = /\bfailed:(\d+)/.exec(text);
+  if (bundleFailed && Number(bundleFailed[1]) > 0) return 'bundle_partial_failed';
+  if (/seed-meta is .*\bgate=|\bdeferred:\d+|ran:0 skipped:/.test(text)) return 'not_due_or_deferred';
+  if (/usage: .*--force/.test(text)) return 'requires_manual_force';
+  if (/failed gracefully/.test(text)) return 'graceful_failure_needs_detail';
   if (/\b(no|missing)\b.*\b(api[_ -]?key|key|token|auth|credential|secret)\b/.test(text)) return 'missing_api_key';
   if (/\b(api[_ -]?key|token|auth|credential|secret)\b.*\b(not set|missing|required|not configured|none)\b/.test(text)) return 'missing_api_key';
   if (/\b401\b|unauthenticated|unauthorized|invalid api key|invalid token/.test(text)) return 'missing_or_invalid_auth';
@@ -27,7 +32,7 @@ function classify(status, reason) {
 function parseLog(text) {
   const rows = [];
   let summary = null;
-  const seederLine = /^(?:→|â†’)\s+(seed-[^\s]+\.mjs)\s+\.\.\.\s+(OK|SKIP|FAIL|TIMEOUT)(?:\s+\((.*)\))?\s*$/;
+  const seederLine = /^\S+\s+(seed-[^\s]+\.mjs)\s+\.\.\.\s+(OK|SKIP|FAIL|TIMEOUT)(?:\s+\((.*)\))?\s*$/;
   const doneLine = /^Done:\s+(\d+)\s+ok,\s+(\d+)\s+skipped,\s+(\d+)\s+failed,\s+(\d+)\s+timed out/i;
 
   for (const rawLine of text.split(/\r?\n/)) {
@@ -80,19 +85,19 @@ function parseLog(text) {
 function markdown(report) {
   const lines = [];
   const s = report.summary;
-  lines.push(`# Seeder Run Report`);
+  lines.push('# Seeder Run Report');
   lines.push('');
   lines.push(`Parsed rows: ${report.parsedRows}`);
   lines.push(`Summary: ${s.ok} OK, ${s.skipped} skipped, ${s.failed} failed, ${s.timedOut} timed out`);
   lines.push('');
-  lines.push(`| Cause | Count |`);
-  lines.push(`| --- | ---: |`);
+  lines.push('| Cause | Count |');
+  lines.push('| --- | ---: |');
   for (const [cause, count] of Object.entries(report.byCause).sort((a, b) => b[1] - a[1])) {
     lines.push(`| ${cause} | ${count} |`);
   }
   lines.push('');
-  lines.push(`| Seeder | Status | Cause | Reason |`);
-  lines.push(`| --- | --- | --- | --- |`);
+  lines.push('| Seeder | Status | Cause | Reason |');
+  lines.push('| --- | --- | --- | --- |');
   for (const row of report.rows.filter((r) => r.status !== 'OK')) {
     const reason = row.reason.replace(/\|/g, '\\|');
     lines.push(`| ${row.seeder} | ${row.status} | ${row.cause} | ${reason} |`);
