@@ -70,6 +70,12 @@ services:
         condition: service_started
       ais-relay:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/service-status"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     restart: unless-stopped
 
   ais-relay:
