@@ -106,8 +106,15 @@ services:
 The seed scripts fetch upstream data and write it to Redis. They run **on the host** (not inside the container) and need the Redis REST proxy to be running.
 
 ```bash
-# Run all seeders (auto-sources API keys from docker-compose.override.yml)
+# Run all seeders on the host (auto-sources API keys from docker-compose.override.yml)
 ./scripts/run-seeders.sh
+```
+
+For VPS/self-hosted deployments where Node dependencies should stay inside Docker, use the profile-gated seeder runner instead:
+
+```bash
+docker compose --profile seeders build seeders
+docker compose --profile seeders run --rm seeders
 ```
 
 **⚠️ Important:** Redis data persists across container restarts via the `redis-data` volume, but is lost on `docker compose down -v`. Re-run the seeders if you remove volumes or see stale data.
@@ -115,8 +122,11 @@ The seed scripts fetch upstream data and write it to Redis. They run **on the ho
 To automate, add a cron job:
 
 ```bash
-# Re-seed every 30 minutes
+# Re-seed every 30 minutes with host-side Node deps
 */30 * * * * cd /path/to/worldmonitor && ./scripts/run-seeders.sh >> /tmp/wm-seeders.log 2>&1
+
+# Or keep dependencies inside Docker
+*/30 * * * * cd /path/to/worldmonitor && docker compose --profile seeders run --rm seeders >> /tmp/wm-seeders.log 2>&1
 ```
 
 **Per-seeder timeout (`SEED_TIMEOUT`):** standalone seeders are each wrapped in a

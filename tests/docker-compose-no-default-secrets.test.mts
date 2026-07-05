@@ -91,6 +91,24 @@ describe('docker self-hosting — no default credentials (#3804)', () => {
     );
   });
 
+  it('docker-compose.yml provides a profile-gated seeder runner for self-hosting', async () => {
+    const compose = await read('docker-compose.yml');
+    assert.match(compose, /^\s{2}seeders:\n/m);
+    assert.match(compose, /^\s{4}profiles:\n\s{6}- seeders/m);
+    assert.match(compose, /dockerfile:\s+Dockerfile\.seeders/);
+    assert.match(compose, /env_file:\n\s+- path: \.env\n\s+required:\s+false/);
+    assert.match(compose, /UPSTASH_REDIS_REST_URL:\s+"http:\/\/redis-rest:80"/);
+    assert.match(compose, /UPSTASH_REDIS_REST_TOKEN:\s+"\$\{REDIS_TOKEN:\?/);
+    assert.match(compose, /redis-rest:\n\s+condition: service_started/);
+    assert.match(compose, /restart:\s+"no"/);
+  });
+
+  it('.dockerignore excludes local env files from Docker build contexts', async () => {
+    const dockerignore = await read('.dockerignore');
+    assert.match(dockerignore, /^\.env\*/m);
+    assert.match(dockerignore, /^!\.env\.example/m);
+  });
+
   it('SELF_HOSTING.md instructions reference $REDIS_TOKEN, not the literal wm-local-token', async () => {
     const md = await read('SELF_HOSTING.md');
     for (const pat of SHIPPED_DEFAULT_PATTERNS) {

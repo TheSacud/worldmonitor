@@ -120,6 +120,25 @@ services:
       PORT: "3004"
     restart: unless-stopped
 
+  seeders:
+    profiles:
+      - seeders
+    build:
+      context: .
+      dockerfile: Dockerfile.seeders
+    image: worldmonitor-seeders:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      UPSTASH_REDIS_REST_URL: "http://redis-rest:80"
+      UPSTASH_REDIS_REST_TOKEN: "${REDIS_TOKEN:?REDIS_TOKEN required - generate with: openssl rand -hex 32}"
+      SEED_TIMEOUT: "${SEED_TIMEOUT:-1800}"
+    depends_on:
+      redis-rest:
+        condition: service_started
+    restart: "no"
+
   redis:
     image: docker.io/redis:7-alpine
     container_name: worldmonitor-redis
