@@ -1837,6 +1837,16 @@ export async function createLocalApiServer(options = {}) {
           );
         }
       }
+      if (context.mode === 'docker' && process.env.WS_RELAY_URL) {
+        try {
+          const relayUrl = process.env.WS_RELAY_URL.replace(/^wss?:\/\//, (scheme) => scheme === 'wss://' ? 'https://' : 'http://');
+          extraAllowedPrivateOrigins.push(new URL(relayUrl).origin);
+        } catch (err) {
+          context.logger.warn(
+            `[local-api] WS_RELAY_URL is not a valid URL; not added to the private-fetch allowlist (relay-backed handlers will be SSRF-blocked): ${err.message}`,
+          );
+        }
+      }
       if (context.allowPrivateRemoteBase) {
         try { extraAllowedPrivateOrigins.push(new URL(context.remoteBase).origin); } catch {}
       }
