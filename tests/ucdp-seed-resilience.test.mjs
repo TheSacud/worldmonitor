@@ -58,7 +58,7 @@ function sourceFilesContaining(rootDir, needle) {
         if (err?.code === 'ENOENT') continue;
         throw err;
       }
-      if (text.includes(needle)) matches.push(path);
+      if (text.includes(needle)) matches.push(path.replace(/\\/g, '/'));
     }
   }
   return matches.sort();
@@ -217,6 +217,12 @@ describe('UCDP version selection prefers the newest release', () => {
     assert.deepEqual(ucdpRedisWriterPaths(), EXPECTED_UCDP_WRITER_PATHS);
   });
 
+  it('standalone seeder status logs do not log token fragments', () => {
+    assert.doesNotMatch(standaloneSrc, /maskToken/);
+    assert.doesNotMatch(standaloneSrc, /slice\(0,\s*4\).*slice\(-4\)/s);
+    assert.match(standaloneSrc, /Redis Token: \$\{envStatus\(redisToken\)\}/);
+    assert.match(standaloneSrc, /UCDP Token: \$\{ucdpToken \? 'set' : 'missing \(unauthenticated\)'\}/);
+  });
   it('standalone cron discovery also requires non-empty Result for the same Redis key', async () => {
     assert.match(standaloneSrc, /const REDIS_KEY = 'conflict:ucdp-events:v1'/);
     const standaloneDiscover = standaloneSrc.slice(

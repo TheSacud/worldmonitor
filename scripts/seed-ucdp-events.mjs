@@ -47,9 +47,8 @@ function loadEnvFile() {
   }
 }
 
-function maskToken(token) {
-  if (!token || token.length < 8) return '***';
-  return token.slice(0, 4) + '***' + token.slice(-4);
+function envStatus(value) {
+  return value ? 'set' : 'missing';
 }
 
 function buildVersionCandidates() {
@@ -113,8 +112,8 @@ async function main() {
 
   console.log('=== UCDP Events Seed ===');
   console.log(`  Redis:      ${redisUrl}`);
-  console.log(`  Redis Token: ${maskToken(redisToken)}`);
-  console.log(`  UCDP Token: ${ucdpToken ? maskToken(ucdpToken) : '(none — unauthenticated)'}`);
+  console.log(`  Redis Token: ${envStatus(redisToken)}`);
+  console.log(`  UCDP Token: ${ucdpToken ? 'set' : 'missing (unauthenticated)'}`);
   console.log();
 
   const { version, page0 } = await discoverVersion(ucdpToken);
