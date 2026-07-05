@@ -3668,7 +3668,7 @@ async function seedClassifyForVariant(variant, seenTitles) {
   let digest;
   try {
     const resp = await fetch(digestUrl, {
-      headers: { Accept: 'application/json', 'User-Agent': CHROME_UA },
+      headers: warmPingHeaders({ Accept: 'application/json' }),
       signal: AbortSignal.timeout(15_000),
     });
     if (!resp.ok) return { total: 0, classified: 0, skipped: 0 };
