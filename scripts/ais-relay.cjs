@@ -1498,6 +1498,12 @@ async function orefBootstrapHistoryWithRetry() {
     console.warn('[Relay] OREF Redis bootstrap failed:', err?.message || err);
   }
 
+  if (!OREF_PROXY_AVAILABLE) {
+    orefState.bootstrapSource = null;
+    console.log('[Relay] OREF upstream bootstrap skipped (no OREF_PROXY_AUTH configured)');
+    return;
+  }
+
   // Phase 2: upstream with retry + exponential backoff
   const MAX_ATTEMPTS = 3;
   const BASE_DELAY_MS = 3000;
