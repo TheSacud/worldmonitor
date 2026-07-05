@@ -206,6 +206,11 @@ const UPSTASH_ENABLED = !!(
 const RELAY_ENV_PREFIX = process.env.RELAY_ENV ? `${process.env.RELAY_ENV}:` : '';
 const OREF_REDIS_KEY = `${RELAY_ENV_PREFIX}relay:oref:history:v1`;
 const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+const WORLDMONITOR_API_BASE_URL = (process.env.WORLDMONITOR_API_BASE_URL || 'https://api.worldmonitor.app').replace(/\/+$/, '');
+function worldMonitorApiUrl(path) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${WORLDMONITOR_API_BASE_URL}${normalized}`;
+}
 const redisRestRequest = (url, options, callback) => (url.protocol === 'http:' ? http : https).request(url, options, callback);
 
 if (UPSTASH_REDIS_REST_URL && !UPSTASH_REDIS_REST_URL.startsWith('https://') && !UPSTASH_REDIS_REST_IS_LOCAL) {
@@ -3653,24 +3658,15 @@ async function classifyFetchLlm(titles) {
 let classifyInFlight = false;
 
 async function seedClassifyForVariant(variant, seenTitles) {
-  const digestUrl = `https://api.worldmonitor.app/api/news/v1/list-feed-digest?variant=${variant}&lang=en`;
+  const digestUrl = worldMonitorApiUrl(`/api/news/v1/list-feed-digest?variant=${variant}&lang=en`);
   let digest;
   try {
-    const resp = await new Promise((resolve, reject) => {
-      const req = https.get(digestUrl, {
-        headers: { Accept: 'application/json', 'User-Agent': CHROME_UA },
-        timeout: 15000,
-      }, resolve);
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    const resp = await fetch(digestUrl, {
+      headers: { Accept: 'application/json', 'User-Agent': CHROME_UA },
+      signal: AbortSignal.timeout(15_000),
     });
-    if (resp.statusCode !== 200) { resp.resume(); return { total: 0, classified: 0, skipped: 0 }; }
-    const body = await new Promise((resolve) => {
-      let d = '';
-      resp.on('data', (c) => { d += c; });
-      resp.on('end', () => resolve(d));
-    });
-    digest = JSON.parse(body);
+    if (!resp.ok) return { total: 0, classified: 0, skipped: 0 };
+    digest = await resp.json();
   } catch {
     return { total: 0, classified: 0, skipped: 0 };
   }
@@ -3884,7 +3880,7 @@ async function startClassifySeedLoop() {
 // so service statuses are always cached (TTL is 30 min).
 // ─────────────────────────────────────────────────────────────
 const SERVICE_STATUSES_SEED_INTERVAL_MS = 15 * 60 * 1000; // 15 min (TTL/2)
-const SERVICE_STATUSES_RPC_URL = 'https://api.worldmonitor.app/api/infrastructure/v1/list-service-statuses';
+const SERVICE_STATUSES_RPC_URL = worldMonitorApiUrl('/api/infrastructure/v1/list-service-statuses');
 
 async function seedServiceStatuses() {
   try {
@@ -4499,7 +4495,7 @@ function warmPingHeaders(extra = {}) {
 // keeps CDN caching from hiding the handler from the warm-ping loop.
 // ─────────────────────────────────────────────────────────────
 const CII_WARM_PING_INTERVAL_MS = 8 * 60 * 1000; // 8 min (live cache TTL is 10 min)
-const CII_RPC_URL = 'https://api.worldmonitor.app/api/intelligence/v1/get-risk-scores';
+const CII_RPC_URL = worldMonitorApiUrl('/api/intelligence/v1/get-risk-scores');
 
 function ciiWarmPingUrl() {
   return `${CII_RPC_URL}?_wm_warm_ping=${Date.now()}`;
@@ -4535,7 +4531,7 @@ function startCiiWarmPingLoop() {
 // Interval matches health.js maxStaleMin (60 min) with a 2× margin.
 // ─────────────────────────────────────────────────────────────
 const CHOKEPOINT_WARM_PING_INTERVAL_MS = 30 * 60 * 1000; // 30 min
-const CHOKEPOINT_RPC_URL = 'https://api.worldmonitor.app/api/supply-chain/v1/get-chokepoint-status';
+const CHOKEPOINT_RPC_URL = worldMonitorApiUrl('/api/supply-chain/v1/get-chokepoint-status');
 
 async function seedChokepointWarmPing() {
   try {
@@ -4570,7 +4566,7 @@ function startChokepointWarmPingLoop() {
 // seed-meta on every live fetch; we just need to call it regularly.
 // ─────────────────────────────────────────────────────────────
 const CABLE_HEALTH_WARM_PING_INTERVAL_MS = 30 * 60 * 1000; // 30 min
-const CABLE_HEALTH_RPC_URL = 'https://api.worldmonitor.app/api/infrastructure/v1/get-cable-health';
+const CABLE_HEALTH_RPC_URL = worldMonitorApiUrl('/api/infrastructure/v1/get-cable-health');
 
 async function seedCableHealthWarmPing() {
   try {
@@ -11001,7 +10997,7 @@ async function handleWidgetAgentRequest(req, res) {
           }
 
           try {
-            const url = new URL(endpoint, 'https://api.worldmonitor.app');
+            const url = new URL(endpoint, WORLDMONITOR_API_BASE_URL);
             for (const [k, v] of Object.entries(params)) {
               url.searchParams.set(k, String(v));
             }
