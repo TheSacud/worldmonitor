@@ -133,6 +133,9 @@ services:
     environment:
       UPSTASH_REDIS_REST_URL: "http://redis-rest:80"
       UPSTASH_REDIS_REST_TOKEN: "${REDIS_TOKEN:?REDIS_TOKEN required - generate with: openssl rand -hex 32}"
+      WS_RELAY_URL: "http://ais-relay:3004"
+      RELAY_SHARED_SECRET: ${RELAY_SHARED_SECRET:?RELAY_SHARED_SECRET_required}
+      WORLDMONITOR_RELAY_KEY: "${WORLDMONITOR_RELAY_KEY:-}"
       SEED_TIMEOUT: "${SEED_TIMEOUT:-1800}"
     depends_on:
       redis-rest:

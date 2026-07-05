@@ -99,6 +99,8 @@ describe('docker self-hosting — no default credentials (#3804)', () => {
     assert.match(compose, /env_file:\n\s+- path: \.env\n\s+required:\s+false/);
     assert.match(compose, /UPSTASH_REDIS_REST_URL:\s+"http:\/\/redis-rest:80"/);
     assert.match(compose, /UPSTASH_REDIS_REST_TOKEN:\s+"\$\{REDIS_TOKEN:\?/);
+    assert.match(compose, /WS_RELAY_URL:\s+"http:\/\/ais-relay:3004"/);
+    assert.match(compose, /RELAY_SHARED_SECRET:\s+\$\{RELAY_SHARED_SECRET:\?/);
     assert.match(compose, /redis-rest:\n\s+condition: service_started/);
     assert.match(compose, /restart:\s+"no"/);
   });
