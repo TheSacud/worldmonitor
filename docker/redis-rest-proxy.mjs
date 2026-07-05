@@ -39,9 +39,9 @@ function checkAuth(req) {
 }
 
 // Command safety: allowlist of expected Redis commands.
-// Blocks dangerous operations like FLUSHALL, CONFIG SET, EVAL, DEBUG, SLAVEOF.
-// @upstash/ratelimit uses EVALSHA/EVALSHA_RO for its preloaded Lua limiter
-// script; allow the hash-only form without accepting arbitrary EVAL bodies.
+// Blocks dangerous operations like FLUSHALL, CONFIG SET, DEBUG, SLAVEOF.
+// @upstash/ratelimit uses Lua scripts for its limiter. Upstash can send EVAL
+// on a cold script cache, then EVALSHA/EVALSHA_RO once the script is loaded.
 const ALLOWED_COMMANDS = new Set([
   'GET', 'SET', 'DEL', 'MGET', 'MSET', 'SCAN',
   'TTL', 'EXPIRE', 'PEXPIRE', 'EXISTS', 'TYPE',
@@ -55,7 +55,7 @@ const ALLOWED_COMMANDS = new Set([
   'PUBLISH', 'SUBSCRIBE',
   'SETNX', 'SETEX', 'PSETEX', 'GETSET',
   'APPEND', 'STRLEN',
-  'EVALSHA', 'EVALSHA_RO',
+  'EVAL', 'EVALSHA', 'EVALSHA_RO',
 ]);
 
 async function runCommand(args) {
