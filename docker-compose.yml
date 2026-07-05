@@ -19,7 +19,7 @@ services:
     image: worldmonitor:latest
     container_name: worldmonitor
     ports:
-      - "${WM_PORT:-3000}:8080"
+      - "127.0.0.1:${WM_PORT:-3000}:8080"
     environment:
       UPSTASH_REDIS_REST_URL: "http://redis-rest:80"
       UPSTASH_REDIS_REST_TOKEN: "${REDIS_TOKEN:?REDIS_TOKEN required — generate with: openssl rand -hex 32}"
@@ -27,6 +27,16 @@ services:
       LOCAL_API_MODE: "docker"
       LOCAL_API_CLOUD_FALLBACK: "false"
       WS_RELAY_URL: "http://ais-relay:3004"
+      RELAY_SHARED_SECRET: ${RELAY_SHARED_SECRET:?RELAY_SHARED_SECRET_required}
+      WM_SESSION_SECRET: "${WM_SESSION_SECRET:-}"
+      WORLDMONITOR_VALID_KEYS: "${WORLDMONITOR_VALID_KEYS:-}"
+      WM_SELF_HOST_PRO: "${WM_SELF_HOST_PRO:-false}"
+      WM_SELF_HOST_AUTO_SESSION: "${WM_SELF_HOST_AUTO_SESSION:-false}"
+      WM_SELF_HOST_USER_ID: "${WM_SELF_HOST_USER_ID:-selfhost-owner}"
+      WM_SELF_HOST_USER_EMAIL: "${WM_SELF_HOST_USER_EMAIL:-}"
+      WM_SELF_HOST_USER_NAME: "${WM_SELF_HOST_USER_NAME:-Self-host Owner}"
+      WORLDMONITOR_PUBLIC_BASE_URL: "${WORLDMONITOR_PUBLIC_BASE_URL:-}"
+      BRIEF_URL_SIGNING_SECRET: "${BRIEF_URL_SIGNING_SECRET:-}"
       # LLM provider (any OpenAI-compatible endpoint)
       LLM_API_URL: "${LLM_API_URL:-}"
       LLM_API_KEY: "${LLM_API_KEY:-}"
@@ -70,6 +80,9 @@ services:
     container_name: worldmonitor-ais-relay
     environment:
       AISSTREAM_API_KEY: "${AISSTREAM_API_KEY:-}"
+      RELAY_SHARED_SECRET: ${RELAY_SHARED_SECRET:?RELAY_SHARED_SECRET_required}
+      UPSTASH_REDIS_REST_URL: "http://redis-rest:80"
+      UPSTASH_REDIS_REST_TOKEN: "${REDIS_TOKEN:?REDIS_TOKEN required - generate with: openssl rand -hex 32}"
       PORT: "3004"
     restart: unless-stopped
 

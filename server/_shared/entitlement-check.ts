@@ -12,6 +12,7 @@
  */
 
 import { getCachedJson, setCachedJson } from './redis';
+import { getSelfHostEntitlements, isSelfHostUserId } from './self-host';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -144,6 +145,10 @@ export function getRequiredTier(pathname: string): number | null {
  * the same userId share a single in-flight promise.
  */
 export async function getEntitlements(userId: string): Promise<CachedEntitlements | null> {
+  if (isSelfHostUserId(userId)) {
+    return getSelfHostEntitlements();
+  }
+
   const existing = _inFlight.get(userId);
   if (existing) return existing;
 

@@ -8,6 +8,7 @@
  */
 
 import { getConvexClient, getConvexApi, waitForConvexAuth } from './convex-client';
+import { getCachedSelfHostConfig, loadSelfHostConfig } from './self-host';
 
 export interface EntitlementState {
   planKey: string;
@@ -43,6 +44,14 @@ let unsubscribeFn: (() => void) | null = null;
  */
 export async function initEntitlementSubscription(_userId?: string): Promise<void> {
   if (initialized) return;
+
+  const selfHost = getCachedSelfHostConfig() ?? await loadSelfHostConfig();
+  if (selfHost.enabled && selfHost.entitlements) {
+    currentState = selfHost.entitlements;
+    initialized = true;
+    for (const cb of listeners) cb(currentState);
+    return;
+  }
 
   try {
     const client = await getConvexClient();

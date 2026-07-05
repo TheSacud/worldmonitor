@@ -1,5 +1,6 @@
 import { enqueueSentryCall } from '@/bootstrap/sentry-defer';
 import { getCurrentClerkUser, scheduleClerkLoad, subscribeClerk } from './clerk';
+import { loadSelfHostConfig } from './self-host';
 
 /** Minimal user profile exposed to UI components. */
 export interface AuthUser {
@@ -57,6 +58,13 @@ function snapshotSession(): AuthSession {
  * the real session, and flips `isPending` to `false`.
  */
 export async function initAuthState(): Promise<void> {
+  const selfHost = await loadSelfHostConfig();
+  if (selfHost.enabled && selfHost.user) {
+    _currentSession = { user: selfHost.user, isPending: false };
+    enqueueSentryCall((s) => s.setUser({ id: selfHost.user!.id }));
+    return;
+  }
+
   scheduleClerkLoad();
 }
 

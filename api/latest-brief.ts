@@ -35,6 +35,7 @@ import { readRawJsonFromUpstash } from './_upstash-json.js';
 import { captureSilentError } from './_sentry-edge.js';
 import { validateBearerToken } from '../server/auth-session';
 import { getEntitlements } from '../server/_shared/entitlement-check';
+import { resolveSelfHostRequest } from '../server/_shared/self-host';
 import { signBriefUrl, BriefUrlError } from '../server/_shared/brief-url';
 import { assertBriefEnvelope } from '../server/_shared/brief-render.js';
 
@@ -183,18 +184,25 @@ export default async function handler(
     return jsonResponse({ error: 'Method not allowed' }, 405, cors);
   }
 
-  const authHeader = req.headers.get('Authorization') ?? '';
-  const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!jwt) {
-    return jsonResponse({ error: 'UNAUTHENTICATED' }, 401, cors);
+  const selfHost = await resolveSelfHostRequest(req);
+  let userId = selfHost?.userId ?? '';
+  let ent: { features: { tier: number } } | null = selfHost?.entitlements ?? null;
+
+  if (!userId) {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!jwt) {
+      return jsonResponse({ error: 'UNAUTHENTICATED' }, 401, cors);
+    }
+
+    const session = await validateBearerToken(jwt);
+    if (!session.valid || !session.userId) {
+      return jsonResponse({ error: 'UNAUTHENTICATED' }, 401, cors);
+    }
+    userId = session.userId;
+    ent = await getEntitlements(userId);
   }
 
-  const session = await validateBearerToken(jwt);
-  if (!session.valid || !session.userId) {
-    return jsonResponse({ error: 'UNAUTHENTICATED' }, 401, cors);
-  }
-
-  const ent = await getEntitlements(session.userId);
   if (!ent || ent.features.tier < 1) {
     return jsonResponse(
       {
@@ -224,11 +232,6 @@ export default async function handler(
   const requestedSlot =
     slotParam !== null && ISSUE_SLOT_RE.test(slotParam) ? slotParam : null;
 
-  // Hoist the narrowed userId so the retry-helper arrow closures capture a
-  // `string` rather than `string | undefined` — TypeScript's narrowing on
-  // `session.userId` (guarded above at the UNAUTHENTICATED gate) does not
-  // survive into closure capture sites.
-  const userId: string = session.userId;
 
   let issueSlot: string | null = null;
   let preview: BriefPreview | null = null;
@@ -287,17 +290,17 @@ export default async function handler(
   let magazineUrl: string;
   try {
     magazineUrl = await signBriefUrl({
-      userId: session.userId,
+      userId,
       issueDate: issueSlot,
       baseUrl: publicBaseUrl(req),
       secret,
     });
   } catch (err) {
     if (err instanceof BriefUrlError && err.code === 'invalid_user_id') {
-      // Clerk userId should always match our shape, but if it does
+      // The resolved userId should always match our shape, but if it does
       // not we want to log and fail clean rather than expose the raw
       // id in a stack trace.
-      console.error('[api/latest-brief] Clerk userId failed shape check');
+      console.error('[api/latest-brief] resolved userId failed shape check');
       return jsonResponse({ error: 'service_unavailable' }, 503, cors);
     }
     throw err;

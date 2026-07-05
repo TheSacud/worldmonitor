@@ -7,6 +7,7 @@ import { getCorsHeaders, isDisallowedOrigin } from './_cors.js';
 import { timingSafeEqualSecret, timingSafeIncludes } from './_crypto.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { issueSessionToken } from './_session.js';
+import { getSelfHostEnterpriseKey, isSelfHostAutoSessionEnabled } from './_self-host.js';
 
 export const config = { runtime: 'edge' };
 
@@ -136,6 +137,7 @@ export default async function handler(req, ctx) {
   const body = await readBody(req);
   const widgetKey = normalizeLegacyKey(body.widgetKey);
   const proKey = normalizeLegacyKey(body.proKey);
+  const selfHostProKey = !proKey && isSelfHostAutoSessionEnabled() ? getSelfHostEnterpriseKey() : '';
 
   if (
     (submittedLegacyKey(body.widgetKey) && !(await isValidWidgetKey(widgetKey))) ||
@@ -152,10 +154,10 @@ export default async function handler(req, ctx) {
     headers = appendHeader(headers, 'Set-Cookie', clearReadableCookie(WIDGET_KEY_COOKIE));
     headers = appendHeader(headers, 'Set-Cookie', sessionCookie(req, WIDGET_KEY_COOKIE, widgetKey));
   }
-  if (proKey) {
+  if (proKey || selfHostProKey) {
     headers = appendHeader(headers, 'Set-Cookie', clearReadableCookie(PRO_KEY_COOKIE));
-    headers = appendHeader(headers, 'Set-Cookie', sessionCookie(req, PRO_KEY_COOKIE, proKey));
+    headers = appendHeader(headers, 'Set-Cookie', sessionCookie(req, PRO_KEY_COOKIE, proKey || selfHostProKey));
   }
 
-  return jsonResponse({ ok: true, exp: issued.exp }, 200, headers);
+  return jsonResponse({ ok: true, exp: issued.exp, selfHostPro: Boolean(selfHostProKey) }, 200, headers);
 }
