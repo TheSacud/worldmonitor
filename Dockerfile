@@ -86,8 +86,9 @@ USER appuser
 
 EXPOSE 8080
 
-# Healthcheck via nginx
+# Healthcheck via nginx. Use the local sidecar status endpoint, not /api/health:
+# /api/health is the seeded-data readiness endpoint and can require API auth.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:8080/api/health || exit 1
+  CMD wget -qO- http://localhost:8080/api/service-status || exit 1
 
 CMD ["/app/entrypoint.sh"]
