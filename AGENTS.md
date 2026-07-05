@@ -1,5 +1,16 @@
 # AGENTS.md
 
+## Sacud VPS Fork Workflow
+
+- This local clone and the VPS deployment are based on the `TheSacud/worldmonitor` fork.
+- Keep `origin` pointing to `git@github.com:TheSacud/worldmonitor.git`.
+- Keep `upstream` pointing to `https://github.com/koala73/worldmonitor.git` for pulling original project updates only.
+- Do not push to `upstream`; on the VPS it should stay configured as `DISABLED` for push.
+- Use the `sacud/vps` branch for Sacud-specific deployment changes, local config examples, service wrappers, nginx/systemd notes, and integration work with Kai.
+- To update from the original project: fetch `upstream`, merge or rebase `upstream/main` into `sacud/vps`, resolve conflicts deliberately, then push only to `origin`.
+- Because this project is AGPL-3.0, keep Kai integration at service/API boundaries unless deliberately accepting AGPL obligations for copied or derived code.
+- Do not commit secrets, `.env` files, generated runtime data, Cloudflare Access tokens, API keys, or VPS-only private paths.
+
 Agent entry point for WorldMonitor. Read this first, then follow links for depth.
 
 ## What This Project Is
