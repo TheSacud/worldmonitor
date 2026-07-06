@@ -108,6 +108,156 @@ Validation hygiene:
 - After bootstrap or pre-push, run `git status --short`. If dependency bootstrap changed lockfiles you did not intend to edit, remove those incidental changes before finalizing.
 - After install, prefer local tools such as `./node_modules/.bin/tsx --test ...` for focused TypeScript tests when `npx` is flaky.
 
+## Workspace Test And PR Handoff Commands
+
+Use these commands for Hermes-owned worktrees. Keep heavy checks sequential;
+parallel `test:data`, typecheck, or edge-bundle runs can OOM in worktrees.
+
+### Read-Only Diagnosis
+
+Run this before editing, without reading `.env*`, database files, generated
+runtime state, Cloudflare tokens, API keys, or other raw credentials:
+
+```bash
+git status --short
+git worktree list
+gh pr list --search "<issue-or-task-id>" --state open --json number,title,headRefName,url
+rg --files -g 'package.json' -g 'pyproject.toml' -g 'AGENTS.md' -g '!data/**' -g '!src/data/**' -g '!node_modules/**' -g '!**/.env*'
+```
+
+### Install And Bootstrap
+
+For a fresh worktree, prefer the repository helper so ignored local env links
+and npm cache settings are handled consistently:
+
+```bash
+npm run worktree:bootstrap
+git status --short
+```
+
+For docs-only or test-discovery work where native postinstall work is not
+needed:
+
+```bash
+npm run worktree:bootstrap:test-only
+git status --short
+```
+
+If the helper is unavailable and no secrets are needed, use deterministic npm
+install directly:
+
+```bash
+npm ci --cache /tmp/worldmonitor-npm-cache
+```
+
+### Lint And Typecheck
+
+For markdown-only changes:
+
+```bash
+npm run lint:md
+```
+
+For source, API, server, or script changes, run the relevant checks
+sequentially:
+
+```bash
+npm run lint
+npm run typecheck
+npm run typecheck:api
+```
+
+When `convex/` changes, also run:
+
+```bash
+npm run test:convex
+```
+
+### Unit And Integration Tests
+
+Use the broad suites for app PR handoff when dependencies and credentials are
+available:
+
+```bash
+npm run test:data
+npm run test:sidecar
+```
+
+Use focused local tools for narrow changes:
+
+```bash
+./node_modules/.bin/tsx --test tests/<name>.test.mts
+./node_modules/.bin/tsx --test tests/<name>.test.mjs
+node --test api/<name>.test.mjs
+```
+
+### Smoke And E2E Tests
+
+Playwright tests start a local Vite server on `127.0.0.1:4173`. Install the
+Chromium browser once per machine if it is missing:
+
+```bash
+npx playwright install chromium
+```
+
+Run the narrow runtime smoke first:
+
+```bash
+npm run test:e2e:runtime
+```
+
+For variant smoke, run the touched variant when possible, or all variants for a
+release handoff:
+
+```bash
+npm run test:e2e:variant-smoke:full
+npm run test:e2e:variant-smoke:energy
+npm run test:e2e:variant-smoke
+```
+
+Known smoke gaps:
+
+- Some smoke tests exercise local API routes backed by live upstream data. They
+  are useful for app-level regressions, but upstream provider outages can still
+  produce diagnostics or flakes.
+- Playwright browser dependencies may be absent in fresh servers; record that
+  as an environment gap rather than bypassing the test.
+- `make generate` is only required for proto/API-contract changes and needs Go,
+  `buf`, and the pinned sebuf plugins.
+
+### PR Handoff
+
+Before committing:
+
+```bash
+git status --short
+git diff --check
+npm run lint:md
+```
+
+For code changes, include the relevant lint, typecheck, unit, and smoke commands
+from the sections above. Then commit and open a draft PR against `sacud/vps`:
+
+```bash
+git add <changed-files>
+git commit -m "<type>: <summary>"
+git push -u origin HEAD
+gh pr create --draft --base sacud/vps --head "$(git branch --show-current)" --fill
+```
+
+Include the branch, changed files, tests run, and any skipped checks with exact
+reasons in the PR body or handoff note. Do not deploy, restart services, use
+Docker, or mutate production from a PR handoff worktree.
+
+Known handoff gaps:
+
+- This Sacud fork worktree may only fetch `origin/sacud/vps`; if `origin/main`
+  is absent, the pre-push hook cannot scope against `origin/main` and falls back
+  to broader invariant checks.
+- The local remote configuration is shared repo state. If `origin` or
+  `upstream` differs from the Sacud workflow above, record it and ask for a
+  repo-maintainer fix rather than mutating shared remotes from a task worktree.
+
 ## Architecture Rules
 
 ### Dependency Direction
