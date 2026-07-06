@@ -53,7 +53,7 @@ Railway relay / cron seed scripts / consumer-prices service
 | --- | --- | --- |
 | Web SPA | [`src/main.ts`](../src/main.ts) | Imports global CSS and bootstrap shims, installs deferred Sentry/web-vitals reporting, then creates the app shell. |
 | App shell | [`src/App.ts`](../src/App.ts) | Owns startup phases, runtime state, layout managers, data fan-out, deep links, auth/session setup, and refresh registration. |
-| Dashboard HTML | [`dashboard.html`](../dashboard.html), [`index.html`](../index.html) | Vercel rewrites most non-API routes to the dashboard; root marketing/pro routes are handled separately. |
+| Dashboard HTML | [`index.html`](../index.html), [`vite.config.ts`](../vite.config.ts), [`vercel.json`](../vercel.json) | Vite builds the dashboard entry from `index.html`, renames the emitted asset to `dashboard.html`, and Vercel rewrites most non-API routes to it; root marketing/pro routes are handled separately. |
 | Embed widget | [`embed.html`](../embed.html), [`src/embed-main.ts`](../src/embed-main.ts) | Embeddable widget surface with separate CSP/header treatment. |
 | Vercel API | [`api/`](../api) | Edge endpoint entries. Proto domain entries are thin gateway wrappers; operational endpoints are hand-written. |
 | Proto gateway | [`server/gateway.ts`](../server/gateway.ts), [`server/router.ts`](../server/router.ts) | Shared Edge request pipeline and generated route matching for domain RPCs. |
